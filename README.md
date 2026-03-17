@@ -125,8 +125,8 @@ The following role assignments exist in the modules but are **not activated** in
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)
 - [Bicep CLI](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install)
 - An Azure subscription with sufficient quota for the specified model deployments
-- (Optional) An Entra ID security group for workshop participants
-- (Optional) [uv](https://docs.astral.sh/uv/) for running the post-provisioning Python scripts
+- (Optional - but Recommended) An Entra ID security group for workshop participants
+- (Optional - but Recommended) [uv](https://docs.astral.sh/uv/) for running the post-provisioning Python scripts
 
 ---
 
@@ -134,13 +134,15 @@ The following role assignments exist in the modules but are **not activated** in
 
 ### Required Parameters
 
-Before deploying, configure the following `azd` environment variables. At minimum you must set `PROJECTS_COUNT`:
+Before deploying, configure the following `azd` environment variables before running `azd up`. At minimum you must set `PROJECTS_COUNT`:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `PROJECTS_COUNT` | **Yes** | Number of participant projects to create (e.g., `5` for 5 participants). Each project gets its own AI Foundry project and Capability Host. A trainer project is always added automatically (N+1 total). |
 | `AZURE_GROUP_PRINCIPAL_ID` | Recommended | Object ID of the Entra ID security group containing workshop participants. Enables all participant RBAC assignments (Reader, AI User, Storage, Search). Omit if you don't need group-based access. |
 | `STUDENTS_INITIALS` | Optional | Comma-separated list of student initials for human-readable project names (e.g., `"jsa,adb,mba"`). If provided, the count **must** match `PROJECTS_COUNT` exactly. When omitted, projects are numbered sequentially. |
+
+These variables are read in `main.bicepparam` and forwarded to the corresponding Bicep parameters (`projectsCount`, `groupPrincipalId`, `studentsInitials`). 
 
 > **Note:** `AZURE_PRINCIPAL_ID` (the deployer's identity) is set automatically by `azd` from your logged-in session. You do not need to set it manually.
 
@@ -150,10 +152,9 @@ Before deploying, configure the following `azd` environment variables. At minimu
 cd foundry-workshop
 azd auth login
 
-# Configure parameters
-azd env set PROJECTS_COUNT 5
-azd env set AZURE_GROUP_PRINCIPAL_ID "00000000-0000-0000-0000-000000000000"  # your Entra group Object ID
-azd env set STUDENTS_INITIALS "jsa,adb,mba,klo,pbe"                         # optional
+azd env set PROJECTS_COUNT 15
+azd env set AZURE_GROUP_PRINCIPAL_ID 00000000-0000-0000-0000-000000000000 # your Entra group Object ID
+azd env set STUDENTS_INITIALS aki,gna,sig,mus,nki,svi,cgr,kpr,asa,st1,st2,st3,st4,st5,st6 # optional
 
 azd up
 ```
