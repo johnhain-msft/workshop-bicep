@@ -130,26 +130,32 @@ The following role assignments exist in the modules but are **not activated** in
 
 ---
 
-## Settings
+## Deployment
 
-Configure the deployment by setting `azd` environment variables before running `azd up`:
+### Required Parameters
 
-| Setting | Required | Description |
-|---------|----------|-------------|
-| `PROJECTS_COUNT` | Yes | Number of participant projects to create. A trainer project is always added on top (total = N + 1). |
-| `AZURE_GROUP_PRINCIPAL_ID` | No | Object ID of an Entra ID security group for workshop participants. When set, RBAC roles (Reader, AI User, Storage Blob Data Contributor, Search Contributor, etc.) are assigned to this group. |
-| `STUDENTS_INITIALS` | No | Comma-separated list of student initials (e.g. `aki,gna,sig`). Used to generate descriptive project names instead of numeric suffixes. Must contain exactly `PROJECTS_COUNT` entries if provided. |
+Before deploying, configure the following `azd` environment variables before running `azd up`. At minimum you must set `PROJECTS_COUNT`:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PROJECTS_COUNT` | **Yes** | Number of participant projects to create (e.g., `5` for 5 participants). Each project gets its own AI Foundry project and Capability Host. A trainer project is always added automatically (N+1 total). |
+| `AZURE_GROUP_PRINCIPAL_ID` | Recommended | Object ID of the Entra ID security group containing workshop participants. Enables all participant RBAC assignments (Reader, AI User, Storage, Search). Omit if you don't need group-based access. |
+| `STUDENTS_INITIALS` | Optional | Comma-separated list of student initials for human-readable project names (e.g., `"jsa,adb,mba"`). If provided, the count **must** match `PROJECTS_COUNT` exactly. When omitted, projects are numbered sequentially. |
 
 These variables are read in `main.bicepparam` and forwarded to the corresponding Bicep parameters (`projectsCount`, `groupPrincipalId`, `studentsInitials`). The deployer's principal ID (`deployerPrincipalId`) is automatically resolved from the `AZURE_PRINCIPAL_ID` environment variable set by `azd`.
 
-## Deployment
+> **Note:** `AZURE_PRINCIPAL_ID` (the deployer's identity) is set automatically by `azd` from your logged-in session. You do not need to set it manually.
+
+### Steps
 
 ```bash
 cd foundry-workshop
 azd auth login
+
 azd env set PROJECTS_COUNT 15
-azd env set AZURE_GROUP_PRINCIPAL_ID 1269314a-d8b6-423d-8ebb-1fee6f7f9335
-azd env set STUDENTS_INITIALS aki,gna,sig,mus,nki,svi,cgr,kpr,asa,st1,st2,st3,st4,st5,st6
+azd env set AZURE_GROUP_PRINCIPAL_ID 00000000-0000-0000-0000-000000000000 # your Entra group Object ID
+azd env set STUDENTS_INITIALS aki,gna,sig,mus,nki,svi,cgr,kpr,asa,st1,st2,st3,st4,st5,st6 # optional
+
 azd up
 ```
 
