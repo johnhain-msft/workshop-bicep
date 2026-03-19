@@ -87,6 +87,8 @@ module foundry '../modules/ai/ai-foundry.bicep' = {
     name: 'ai-foundry-${resourceToken}'
     publicNetworkAccess: 'Enabled'
     disableLocalAuth: false // keep local auth in case API KEY is needed
+    
+    // NOTE: Order of models matters for the outputs, as we rely on it in the workshop to identify deployment names for different model types
     deployments: [
       {
         name: 'gpt-4o'
@@ -290,6 +292,7 @@ output FOUNDRY_PROJECT_NAMES string[] = projectNames
 
 output FOUNDRY_NAME string = foundry.outputs.FOUNDRY_NAME
 output FOUNDRY_RESOURCE_ID string = foundry.outputs.FOUNDRY_RESOURCE_ID
+output FOUNDRY_VISION_DEPLOYMENT_NAME string = foundry.outputs.FOUNDRY_DEPLOYMENT_NAMES[0]
 output FOUNDRY_LLM_DEPLOYMENT_NAME string = foundry.outputs.FOUNDRY_DEPLOYMENT_NAMES[1]
 output FOUNDRY_CHAT_DEPLOYMENT_NAME string = foundry.outputs.FOUNDRY_DEPLOYMENT_NAMES[2]
 output FOUNDRY_EMBEDDING_DEPLOYMENT string = foundry.outputs.FOUNDRY_DEPLOYMENT_NAMES[4]
