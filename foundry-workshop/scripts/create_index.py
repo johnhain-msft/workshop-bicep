@@ -14,7 +14,9 @@ import hashlib
 import json
 import logging
 import re
+import socket
 import sys
+import time
 from pathlib import Path
 from typing import Generator
 
@@ -63,6 +65,28 @@ logger = logging.getLogger(__name__)
 RETRY_ATTEMPTS = 3
 RETRY_MIN_WAIT = 2  # seconds
 RETRY_MAX_WAIT = 30  # seconds
+
+
+def _wait_for_storage_dns(hostname: str, max_retries: int = 6, base_delay: int = 5) -> None:
+    """Wait for storage DNS to resolve, with exponential backoff.
+
+    Newly provisioned storage accounts may not be resolvable immediately.
+    """
+    for attempt in range(max_retries):
+        try:
+            socket.getaddrinfo(hostname, 443)
+            return
+        except socket.gaierror:
+            delay = base_delay * (2 ** attempt)
+            logger.info(
+                f"DNS not yet available for {hostname}, "
+                f"retrying in {delay}s (attempt {attempt + 1}/{max_retries})..."
+            )
+            time.sleep(delay)
+    raise RuntimeError(
+        f"Could not resolve {hostname} after {max_retries} retries. "
+        "Check your DNS configuration or try again later."
+    )
 
 
 @retry(
@@ -921,8 +945,10 @@ def main():
         return
 
     # Initialize clients
+    storage_hostname = f"{args.storage_account}.blob.core.windows.net"
+    _wait_for_storage_dns(storage_hostname)
     blob_service_client = BlobServiceClient(
-        account_url=f"https://{args.storage_account}.blob.core.windows.net",
+        account_url=f"https://{storage_hostname}",
         credential=credential,
     )
     container_client = blob_service_client.get_container_client(args.container)

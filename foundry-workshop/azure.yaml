@@ -161,7 +161,6 @@ hooks:
           --storage-account "$env:STORAGE_ACCOUNT_NAME" `
           --doc-intelligence-endpoint "$env:FOUNDRY_COGNITIVE_SERVICE_ENDPOINT" `
           --openai-endpoint "$env:FOUNDRY_OPENAI_ENDPOINT" `
-          --openai-deployment "$env:FOUNDRY_DEPLOYMENT_NAME" `
           --pdf-folder "./pdfs" `
           --index-name "documents" `
           --use-vectors `

@@ -15,6 +15,8 @@ Once configured, any PDF uploaded to the blob container will be automatically pr
 
 import argparse
 import os
+import socket
+import time
 from pathlib import Path
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
@@ -59,6 +61,28 @@ from azure.search.documents.indexes.models import (
 )
 
 
+def _wait_for_storage_dns(hostname: str, max_retries: int = 6, base_delay: int = 5) -> None:
+    """Wait for storage DNS to resolve, with exponential backoff.
+
+    Newly provisioned storage accounts may not be resolvable immediately.
+    """
+    for attempt in range(max_retries):
+        try:
+            socket.getaddrinfo(hostname, 443)
+            return
+        except socket.gaierror:
+            delay = base_delay * (2 ** attempt)
+            print(
+                f"  DNS not yet available for {hostname}, "
+                f"retrying in {delay}s (attempt {attempt + 1}/{max_retries})..."
+            )
+            time.sleep(delay)
+    raise RuntimeError(
+        f"Could not resolve {hostname} after {max_retries} retries. "
+        "Check your DNS configuration or try again later."
+    )
+
+
 def upload_pdfs_to_container(
     storage_account_name: str,
     container_name: str,
@@ -71,6 +95,7 @@ def upload_pdfs_to_container(
         Number of PDFs uploaded.
     """
     blob_service_url = f"https://{storage_account_name}.blob.core.windows.net"
+    _wait_for_storage_dns(f"{storage_account_name}.blob.core.windows.net")
     blob_service_client = BlobServiceClient(blob_service_url, credential=credential)
 
     # Create container if it doesn't exist
