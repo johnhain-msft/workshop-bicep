@@ -140,6 +140,8 @@ Before deploying, configure the following `azd` environment variables before run
 | `PROJECTS_COUNT` | **Yes** | Number of participant projects to create (e.g., `5` for 5 participants). Each project gets its own AI Foundry project and Capability Host. A trainer project is always added automatically (N+1 total). |
 | `AZURE_GROUP_PRINCIPAL_ID` | Recommended | Object ID of the Entra ID security group containing workshop participants. Enables all participant RBAC assignments (Reader, AI User, Storage, Search). Omit if you don't need group-based access. |
 | `STUDENTS_INITIALS` | Optional | Comma-separated list of student initials for human-readable project names (e.g., `"jsa,adb,mba"`). If provided, the count **must** match `PROJECTS_COUNT` exactly. When omitted, projects are numbered sequentially. |
+| `SUBNET_FOR_STORAGE_PE_RESOURCE_ID` | Optional | Resource ID of the subnet to use for the storage account private endpoint. If not provided, the storage account is deployed without a private endpoint and with public network access enabled. |
+| `BLOB_PRIVATE_DNS_ZONE_RESOURCE_ID` | Optional | Resource ID of the private DNS zone for the storage account blob endpoint (`privatelink.blob.core.windows.net`). When provided, DNS configuration is added for the private endpoint. |
 
 These variables are read in `main.bicepparam` and forwarded to the corresponding Bicep parameters (`projectsCount`, `groupPrincipalId`, `studentsInitials`). 
 
@@ -149,16 +151,37 @@ These variables are read in `main.bicepparam` and forwarded to the corresponding
 
 ```bash
 cd foundry-workshop
-azd auth login
+az login
+azd config set auth.useAzCliAuth true # use Azure CLI credentials
+
 
 azd env set PROJECTS_COUNT 15
 azd env set AZURE_GROUP_PRINCIPAL_ID 00000000-0000-0000-0000-000000000000 # your Entra group Object ID
 azd env set STUDENTS_INITIALS aki,gna,sig,mus,nki,svi,cgr,kpr,asa,st1,st2,st3,st4,st5,st6 # optional
 
+# Optional
+azd env set SUBNET_FOR_STORAGE_PE_RESOURCE_ID /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/networking-rg/providers/Microsoft.Network/virtualNetworks/pe-vnet/subnets/pe-subnet
+azd env set BLOB_PRIVATE_DNS_ZONE_RESOURCE_ID /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/dns-rg/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net
+
 azd up
 ```
 
 The `azure.yaml` file defines the `azd` lifecycle hooks. After infrastructure provisioning completes, a `postprovision` hook approves private endpoint connections and creates search indexes. A separate `postup` hook creates the AI agents (v1 and v2) after the full deployment finishes.
+
+## Deployment from Cloudshell
+
+To avoid local DNS/Networking issues, deployment can be executed from cloudshell.
+
+1. Go to https://shell.azure.com
+2. Clone this repository `git clone https://github.com/johnhain-msft/workshop_bicep.git`
+3. Install uv `curl -LsSf https://astral.sh/uv/install.sh | sh`
+4. Set variables
+    ```bash
+    azd env set PROJECTS_COUNT 15
+    azd env set AZURE_GROUP_PRINCIPAL_ID 00000000-0000-0000-0000-000000000000 # your Entra group Object ID
+    azd env set STUDENTS_INITIALS aki,gna,sig,mus,nki,svi,cgr,kpr,asa,st1,st2,st3,st4,st5,st6 # optional
+    ```
+5. Run `azd up`
 
 ---
 

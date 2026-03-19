@@ -14,6 +14,10 @@ param deployerPrincipalId string?
 param groupPrincipalId string?
 @description('Coma-separated list of students initials to be added to resource names for uniqueness, e.g. "jsa,adb,mba"')
 param studentsInitials string?
+@description('Subnet id for storage account private endpoint. If not provided, storage account will be deployed without private endpoint and with public network access enabled.')
+param subnetForStoragePeResourceId string?
+@description('Private DNS Zone resource id for the storage account. When provided, DNS configuration will be added for the private endpoint.')
+param blobPrivateDnsZoneResourceId string?
 
 var tags = {
   'created-by': 'option-ai-gateway'
@@ -83,6 +87,8 @@ module foundry '../modules/ai/ai-foundry.bicep' = {
     name: 'ai-foundry-${resourceToken}'
     publicNetworkAccess: 'Enabled'
     disableLocalAuth: false // keep local auth in case API KEY is needed
+    
+    // NOTE: Order of models matters for the outputs, as we rely on it in the workshop to identify deployment names for different model types
     deployments: [
       {
         name: 'gpt-4o'
@@ -252,8 +258,31 @@ module workshop_search 'workshop_search.bicep' = {
     aiFoundryProjectNames: [for i in range(1, numberOfProjects): projectNames[i - 1]]
     deployerPrincipalId: deployerPrincipalId
     groupPrincipalId: groupPrincipalId
+    blobPrivateDnsZoneResourceId: blobPrivateDnsZoneResourceId
+    subnetForStoragePeResourceId: subnetForStoragePeResourceId
   }
   dependsOn: [projects]
+}
+
+// Assign Cognitive Services roles to the deployer so postprovision scripts can access Document Intelligence and OpenAI
+module deployerCognitiveUserRoleAssignment '../modules/iam/role-assignment-cognitiveServices.bicep' = if (!empty(deployerPrincipalId)) {
+  name: take('deployer-cog-user-role-assignment-deployment', 64)
+  params: {
+    accountName: foundry.outputs.FOUNDRY_NAME
+    projectPrincipalId: deployerPrincipalId!
+    servicePrincipalType: 'User'
+    roleName: 'Cognitive Services User'
+  }
+}
+
+module deployerOpenAIUserRoleAssignment '../modules/iam/role-assignment-cognitiveServices.bicep' = if (!empty(deployerPrincipalId)) {
+  name: take('deployer-openai-user-role-assignment-deployment', 64)
+  params: {
+    accountName: foundry.outputs.FOUNDRY_NAME
+    projectPrincipalId: deployerPrincipalId!
+    servicePrincipalType: 'User'
+    roleName: 'Cognitive Services OpenAI User'
+  }
 }
 
 output FOUNDRY_PROJECTS_CONNECTION_STRINGS string[] = [
@@ -263,6 +292,7 @@ output FOUNDRY_PROJECT_NAMES string[] = projectNames
 
 output FOUNDRY_NAME string = foundry.outputs.FOUNDRY_NAME
 output FOUNDRY_RESOURCE_ID string = foundry.outputs.FOUNDRY_RESOURCE_ID
+output FOUNDRY_VISION_DEPLOYMENT_NAME string = foundry.outputs.FOUNDRY_DEPLOYMENT_NAMES[0]
 output FOUNDRY_LLM_DEPLOYMENT_NAME string = foundry.outputs.FOUNDRY_DEPLOYMENT_NAMES[1]
 output FOUNDRY_CHAT_DEPLOYMENT_NAME string = foundry.outputs.FOUNDRY_DEPLOYMENT_NAMES[2]
 output FOUNDRY_EMBEDDING_DEPLOYMENT string = foundry.outputs.FOUNDRY_DEPLOYMENT_NAMES[4]
