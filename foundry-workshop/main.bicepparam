@@ -12,3 +12,10 @@ param groupPrincipalId = empty(groupPrincipalIdValue) ? null : groupPrincipalIdV
 
 var studentsInitialsValue = readEnvironmentVariable('STUDENTS_INITIALS', '')
 param studentsInitials = empty(studentsInitialsValue) ? null : studentsInitialsValue
+
+var subnetForStoragePeResourceIdValue = readEnvironmentVariable('SUBNET_FOR_STORAGE_PE_RESOURCE_ID', '')
+param subnetForStoragePeResourceId = empty(subnetForStoragePeResourceIdValue) ? null : subnetForStoragePeResourceIdValue
+
+var blobPrivateDnsZoneResourceIdValue = readEnvironmentVariable('BLOB_PRIVATE_DNS_ZONE_RESOURCE_ID', '')
+param blobPrivateDnsZoneResourceId = empty(blobPrivateDnsZoneResourceIdValue) ? null : blobPrivateDnsZoneResourceIdValue
+

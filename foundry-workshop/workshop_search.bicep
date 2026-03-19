@@ -5,6 +5,8 @@ param foundryName string
 param deployerPrincipalId string?
 param groupPrincipalId string?
 param aiFoundryProjectNames string[] = []
+param subnetForStoragePeResourceId string?
+param blobPrivateDnsZoneResourceId string?
 
 resource foundryExisting 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = {
   name: foundryName
@@ -87,6 +89,25 @@ module storageAccount 'br/public:avm/res/storage/storage-account:0.32.0' = {
         }
       ]
     }
+    privateEndpoints: empty(subnetForStoragePeResourceId)
+      ? []
+      : [
+          {
+            name: 'storage${resourceToken}-blob-pe'
+            tags: tags
+            privateDnsZoneGroup: empty(blobPrivateDnsZoneResourceId)
+              ? null
+              : {
+                  privateDnsZoneGroupConfigs: [
+                    {
+                      privateDnsZoneResourceId: blobPrivateDnsZoneResourceId!
+                    }
+                  ]
+                }
+            service: 'blob'
+            subnetResourceId: subnetForStoragePeResourceId!
+          }
+        ]
   }
 }
 
