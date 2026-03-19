@@ -125,9 +125,8 @@ The following role assignments exist in the modules but are **not activated** in
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)
 - [Bicep CLI](https://learn.microsoft.com/azure/azure-resource-manager/bicep/install)
 - An Azure subscription with sufficient quota for the specified model deployments
+- [uv](https://docs.astral.sh/uv/) for running the post-provisioning Python scripts
 - (Optional - but Recommended) An Entra ID security group for workshop participants
-- (Optional - but Recommended) [uv](https://docs.astral.sh/uv/) for running the post-provisioning Python scripts
-
 ---
 
 ## Deployment
