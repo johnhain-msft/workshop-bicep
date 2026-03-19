@@ -210,6 +210,27 @@ module searchRoleAssignment '../modules/iam/ai-search-role-assignments.bicep' = 
   }
 ]
 
+// Assign Cognitive Services roles to the deployer so postprovision scripts can access Document Intelligence and OpenAI
+module deployerCognitiveUserRoleAssignment '../modules/iam/role-assignment-cognitiveServices.bicep' = if (!empty(deployerPrincipalId)) {
+  name: take('deployer-cog-user-role-assignment-deployment', 64)
+  params: {
+    accountName: foundryExisting.name
+    projectPrincipalId: deployerPrincipalId!
+    servicePrincipalType: 'User'
+    roleName: 'Cognitive Services User'
+  }
+}
+
+module deployerOpenAIUserRoleAssignment '../modules/iam/role-assignment-cognitiveServices.bicep' = if (!empty(deployerPrincipalId)) {
+  name: take('deployer-openai-user-role-assignment-deployment', 64)
+  params: {
+    accountName: foundryExisting.name
+    projectPrincipalId: deployerPrincipalId!
+    servicePrincipalType: 'User'
+    roleName: 'Cognitive Services OpenAI User'
+  }
+}
+
 module foundryCognitiveUserRoleAssignment '../modules/iam/role-assignment-cognitiveServices.bicep' = {
   name: take('foundry-cog-user-role-${searchServicePublic.name}-assignment-deployment', 64)
   params: {
