@@ -101,10 +101,10 @@ def upload_pdfs_to_container(
         print(
             f"\n⚠️  Cannot resolve {storage_hostname}."
             "\n    Your corporate DNS may block blob storage endpoints."
-            "\n    Skipping PDF upload — please upload PDFs manually via the Azure Portal:"
-            f"\n      1. Go to Storage Account '{storage_account_name}' in the Azure Portal"
-            f"\n      2. Navigate to Containers > '{container_name}'"
-            f"\n      3. Upload all PDFs from the '{pdf_folder}' folder"
+            "\n    Skipping PDF upload — please upload PDFs manually via Azure CloudShell (https://shell.azure.com):"
+            "\n      1. Upload PDFs to CloudShell using the Upload button in the toolbar"
+            f"\n      2. Run: az storage blob upload-batch --account-name {storage_account_name} "
+            f"--destination {container_name} --source . --pattern '*.pdf' --auth-mode login"
             "\n    The search indexer will process them automatically once uploaded.\n"
         )
         return 0

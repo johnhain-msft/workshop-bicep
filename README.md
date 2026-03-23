@@ -195,17 +195,37 @@ The post-provisioning scripts upload sample PDFs from `foundry-workshop/scripts/
 
 **The search pipeline and indexes are still created successfully** — only the PDF upload is affected. Azure services (AI Search, AI Foundry) access storage through private links inside Azure and are not impacted.
 
-To upload PDFs manually:
+> **Important:** The same DNS restrictions that block the script will also block uploads from the Azure Portal. You must upload via **Azure CloudShell**, which runs inside the Azure network.
 
-1. Open the [Azure Portal](https://portal.azure.com)
-2. Navigate to your **Storage Account** (name is output as `STORAGE_ACCOUNT_NAME` after deployment)
-3. Go to **Data storage** → **Containers**
-4. Upload PDFs to the appropriate container:
-   - **`documents-for-indexer`** — used by the indexer pipeline (`setup_indexer_pipeline.py`). After uploading, the search indexer will process these automatically.
-   - **`documents`** — used by the custom index (`create_index.py`). If you need to re-run `create_index.py` after uploading, run `azd hooks run postprovision` again.
-5. The sample PDFs are located at `foundry-workshop/scripts/pdfs/`
+To upload PDFs manually via CloudShell:
 
-> **Note:** If the `documents-for-indexer` container does not exist yet, create it manually in the Portal before uploading.
+1. Open [Azure CloudShell](https://shell.azure.com)
+2. Use the **Upload** button in the CloudShell toolbar to upload the sample PDFs from `foundry-workshop/scripts/pdfs/` to your CloudShell home directory
+3. Upload the PDFs into both blob containers using the Azure CLI (replace `<STORAGE_ACCOUNT_NAME>` with the value from your deployment outputs):
+   ```bash
+   # Upload to the indexer pipeline container
+   az storage blob upload-batch \
+     --account-name <STORAGE_ACCOUNT_NAME> \
+     --destination documents-for-indexer \
+     --source . \
+     --pattern "*.pdf" \
+     --auth-mode login
+
+   # Upload to the custom index container
+   az storage blob upload-batch \
+     --account-name <STORAGE_ACCOUNT_NAME> \
+     --destination documents \
+     --source . \
+     --pattern "*.pdf" \
+     --auth-mode login
+   ```
+4. The search indexer will process documents in **`documents-for-indexer`** automatically. If you need to re-run the custom index after uploading to **`documents`**, run `azd hooks run postprovision` again.
+
+> **Note:** If a container does not exist yet, create it first:
+> ```bash
+> az storage container create --account-name <STORAGE_ACCOUNT_NAME> --name documents-for-indexer --auth-mode login
+> az storage container create --account-name <STORAGE_ACCOUNT_NAME> --name documents --auth-mode login
+> ```
 
 ---
 

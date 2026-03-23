@@ -971,10 +971,10 @@ def main():
             f"Cannot resolve {storage_hostname}. "
             "Your corporate DNS may block blob storage endpoints.\n"
             "  PDF upload to blob will be skipped — documents will still be processed and indexed.\n"
-            f"  Please upload PDFs manually via the Azure Portal:\n"
-            f"    1. Go to Storage Account '{args.storage_account}' in the Azure Portal\n"
-            f"    2. Navigate to Containers > '{args.container}'\n"
-            f"    3. Upload all PDFs from the '{args.pdf_folder}' folder"
+            "  Please upload PDFs manually via Azure CloudShell (https://shell.azure.com):\n"
+            "    1. Upload PDFs to CloudShell using the Upload button in the toolbar\n"
+            f"    2. Run: az storage blob upload-batch --account-name {args.storage_account} "
+            f"--destination {args.container} --source . --pattern '*.pdf' --auth-mode login"
         )
 
     doc_intelligence_client = DocumentIntelligenceClient(
