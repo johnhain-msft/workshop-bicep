@@ -60,6 +60,8 @@ These roles are assigned to the **deploying user** (provided via the `deployerPr
 | **Storage Blob Data Contributor** | Storage Account | Allows the deployer to upload documents and manage blob data |
 | **Search Service Contributor** | AI Search Service | Allows the deployer to configure the search service post-deployment |
 | **Search Index Data Contributor** | AI Search Service | Allows the deployer to create indexes and load data into AI Search |
+| **Cognitive Services User** | AI Foundry Account | Allows the deployer to call Document Intelligence for PDF processing |
+| **Cognitive Services OpenAI User** | AI Foundry Account | Allows the deployer to call OpenAI models for embeddings and image descriptions |
 
 ### Service-to-Service Identity Assignments
 
@@ -182,6 +184,28 @@ To avoid local DNS/Networking issues, deployment can be executed from cloudshell
     azd env set STUDENTS_INITIALS aki,gna,sig,mus,nki,svi,cgr,kpr,asa,st1,st2,st3,st4,st5,st6 # optional
     ```
 5. Run `azd up`
+
+---
+
+## Troubleshooting
+
+### PDF Upload Fails — "Failed to resolve" or DNS Error
+
+The post-provisioning scripts upload sample PDFs from `foundry-workshop/scripts/pdfs/` to Azure Blob Storage. If your corporate DNS blocks resolution of `*.blob.core.windows.net` (common when private endpoint policies are enforced), the upload will be skipped automatically and you will see a warning.
+
+**The search pipeline and indexes are still created successfully** — only the PDF upload is affected. Azure services (AI Search, AI Foundry) access storage through private links inside Azure and are not impacted.
+
+To upload PDFs manually:
+
+1. Open the [Azure Portal](https://portal.azure.com)
+2. Navigate to your **Storage Account** (name is output as `STORAGE_ACCOUNT_NAME` after deployment)
+3. Go to **Data storage** → **Containers**
+4. Upload PDFs to the appropriate container:
+   - **`documents-for-indexer`** — used by the indexer pipeline (`setup_indexer_pipeline.py`). After uploading, the search indexer will process these automatically.
+   - **`documents`** — used by the custom index (`create_index.py`). If you need to re-run `create_index.py` after uploading, run `azd hooks run postprovision` again.
+5. The sample PDFs are located at `foundry-workshop/scripts/pdfs/`
+
+> **Note:** If the `documents-for-indexer` container does not exist yet, create it manually in the Portal before uploading.
 
 ---
 

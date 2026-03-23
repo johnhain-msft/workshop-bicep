@@ -61,15 +61,19 @@ from azure.search.documents.indexes.models import (
 )
 
 
-def _wait_for_storage_dns(hostname: str, max_retries: int = 6, base_delay: int = 5) -> None:
+def _wait_for_storage_dns(hostname: str, max_retries: int = 6, base_delay: int = 5) -> bool:
     """Wait for storage DNS to resolve, with exponential backoff.
 
     Newly provisioned storage accounts may not be resolvable immediately.
+    Some corporate DNS configurations block blob storage resolution entirely.
+
+    Returns:
+        True if DNS resolved, False if all retries failed.
     """
     for attempt in range(max_retries):
         try:
             socket.getaddrinfo(hostname, 443)
-            return
+            return True
         except socket.gaierror:
             delay = base_delay * (2 ** attempt)
             print(
@@ -77,10 +81,7 @@ def _wait_for_storage_dns(hostname: str, max_retries: int = 6, base_delay: int =
                 f"retrying in {delay}s (attempt {attempt + 1}/{max_retries})..."
             )
             time.sleep(delay)
-    raise RuntimeError(
-        f"Could not resolve {hostname} after {max_retries} retries. "
-        "Check your DNS configuration or try again later."
-    )
+    return False
 
 
 def upload_pdfs_to_container(
@@ -95,7 +96,18 @@ def upload_pdfs_to_container(
         Number of PDFs uploaded.
     """
     blob_service_url = f"https://{storage_account_name}.blob.core.windows.net"
-    _wait_for_storage_dns(f"{storage_account_name}.blob.core.windows.net")
+    storage_hostname = f"{storage_account_name}.blob.core.windows.net"
+    if not _wait_for_storage_dns(storage_hostname):
+        print(
+            f"\n⚠️  Cannot resolve {storage_hostname}."
+            "\n    Your corporate DNS may block blob storage endpoints."
+            "\n    Skipping PDF upload — please upload PDFs manually via the Azure Portal:"
+            f"\n      1. Go to Storage Account '{storage_account_name}' in the Azure Portal"
+            f"\n      2. Navigate to Containers > '{container_name}'"
+            f"\n      3. Upload all PDFs from the '{pdf_folder}' folder"
+            "\n    The search indexer will process them automatically once uploaded.\n"
+        )
+        return 0
     blob_service_client = BlobServiceClient(blob_service_url, credential=credential)
 
     # Create container if it doesn't exist

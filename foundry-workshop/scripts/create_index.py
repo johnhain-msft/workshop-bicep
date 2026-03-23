@@ -67,15 +67,19 @@ RETRY_MIN_WAIT = 2  # seconds
 RETRY_MAX_WAIT = 30  # seconds
 
 
-def _wait_for_storage_dns(hostname: str, max_retries: int = 6, base_delay: int = 5) -> None:
+def _wait_for_storage_dns(hostname: str, max_retries: int = 6, base_delay: int = 5) -> bool:
     """Wait for storage DNS to resolve, with exponential backoff.
 
     Newly provisioned storage accounts may not be resolvable immediately.
+    Some corporate DNS configurations block blob storage resolution entirely.
+
+    Returns:
+        True if DNS resolved, False if all retries failed.
     """
     for attempt in range(max_retries):
         try:
             socket.getaddrinfo(hostname, 443)
-            return
+            return True
         except socket.gaierror:
             delay = base_delay * (2 ** attempt)
             logger.info(
@@ -83,10 +87,7 @@ def _wait_for_storage_dns(hostname: str, max_retries: int = 6, base_delay: int =
                 f"retrying in {delay}s (attempt {attempt + 1}/{max_retries})..."
             )
             time.sleep(delay)
-    raise RuntimeError(
-        f"Could not resolve {hostname} after {max_retries} retries. "
-        "Check your DNS configuration or try again later."
-    )
+    return False
 
 
 @retry(
@@ -619,7 +620,7 @@ def generate_document_id(file_path: Path) -> str:
 
 def process_pdf(
     file_path: Path,
-    container_client: ContainerClient,
+    container_client: ContainerClient | None,
     doc_intelligence_client: DocumentIntelligenceClient,
     openai_client: AzureOpenAI | None,
     openai_deployment: str | None,
@@ -631,8 +632,12 @@ def process_pdf(
     documents = []
     document_id = generate_document_id(file_path)
 
-    # Upload to blob storage
-    blob_url = upload_pdf_to_blob(container_client, file_path)
+    # Upload to blob storage (skip if blob is unavailable)
+    if container_client is not None:
+        blob_url = upload_pdf_to_blob(container_client, file_path)
+    else:
+        blob_url = ""
+        logger.debug(f"Skipping blob upload for {file_path.name} (storage unavailable)")
 
     # Extract content using Document Intelligence
     extracted = extract_document_content(doc_intelligence_client, file_path)
@@ -946,19 +951,31 @@ def main():
 
     # Initialize clients
     storage_hostname = f"{args.storage_account}.blob.core.windows.net"
-    _wait_for_storage_dns(storage_hostname)
-    blob_service_client = BlobServiceClient(
-        account_url=f"https://{storage_hostname}",
-        credential=credential,
-    )
-    container_client = blob_service_client.get_container_client(args.container)
+    blob_available = _wait_for_storage_dns(storage_hostname)
+    container_client = None
+    if blob_available:
+        blob_service_client = BlobServiceClient(
+            account_url=f"https://{storage_hostname}",
+            credential=credential,
+        )
+        container_client = blob_service_client.get_container_client(args.container)
 
-    # Create container if it doesn't exist
-    try:
-        container_client.create_container()
-        logger.info(f"Created container: {args.container}")
-    except Exception:
-        logger.debug(f"Container already exists: {args.container}")
+        # Create container if it doesn't exist
+        try:
+            container_client.create_container()
+            logger.info(f"Created container: {args.container}")
+        except Exception:
+            logger.debug(f"Container already exists: {args.container}")
+    else:
+        logger.warning(
+            f"Cannot resolve {storage_hostname}. "
+            "Your corporate DNS may block blob storage endpoints.\n"
+            "  PDF upload to blob will be skipped — documents will still be processed and indexed.\n"
+            f"  Please upload PDFs manually via the Azure Portal:\n"
+            f"    1. Go to Storage Account '{args.storage_account}' in the Azure Portal\n"
+            f"    2. Navigate to Containers > '{args.container}'\n"
+            f"    3. Upload all PDFs from the '{args.pdf_folder}' folder"
+        )
 
     doc_intelligence_client = DocumentIntelligenceClient(
         endpoint=args.doc_intelligence_endpoint,
